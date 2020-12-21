@@ -1,0 +1,18 @@
+version: '3'
+
+networks:
+  reverse-proxy:
+    external: true
+
+services:
+  whoami:
+    image: docker.io/traefik/whoami:latest
+    container_name: whoami
+    env_file:
+      - .env
+    networks:
+      - reverse-proxy
+    labels:
+      - traefik.enable=true # Explicitly tell Traefik to expose this container
+      - traefik.http.routers.whoami.rule=Host(`whoami.${DOMAIN:-localhost}`) # The domain the service will respond to
+      - traefik.http.routers.whoami.entrypoints=web # Allow request only from the predefined entry point named "web"

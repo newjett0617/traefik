@@ -1,0 +1,31 @@
+version: '3'
+
+networks:
+  reverse-proxy:
+    external: true
+
+services:
+  traefik:
+    image: docker.io/library/traefik:v2.3
+    container_name: traefik
+    restart: always
+    env_file:
+      - .env
+    command:
+      - --api.dashboard=true
+      - --api.insecure=true # Traefik will listen on port 8080 by default for API request
+      - --providers.docker=true # Enabling docker provider
+      - --providers.docker.exposedbydefault=false # Do not expose containers unless explicitly told so
+      - --entrypoints.web.address=:80 # Traefik will listen to incoming request on the port 80 (HTTP)
+    ports:
+      - 80:80
+    networks:
+      - reverse-proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./letsencrypt:/letsencrypt
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN:-localhost}`)
+      - traefik.http.routers.traefik.entrypoints=web
+      - traefik.http.services.dashboard.loadbalancer.server.port=8080
