@@ -1,0 +1,53 @@
+version: '3'
+
+networks:
+  reverse-proxy:
+    external: true
+
+services:
+  traefik:
+    image: docker.io/library/traefik:v2.3
+    container_name: traefik
+    restart: always
+    env_file:
+      - .env
+    command:
+      - --api.dashboard=true
+      - --providers.docker=true # Enabling docker provider
+      - --providers.docker.exposedbydefault=false # Do not expose containers unless explicitly told so
+      - --entrypoints.web.address=:80 # Traefik will listen to incoming request on the port 80 (HTTP)
+      - --entrypoints.websecure.address=:443 # Traefik will listen to incoming request on the port 443 (HTTPS)
+      - --certificatesresolvers.myresolver.acme.httpchallenge=true # Enable a http challenge named "myresolver"
+      - --certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web # Tell it to use our predefined entrypoint named "web"
+      - --certificatesresolvers.myresolver.acme.email=${EMAIL:-postmaster@example.com} # The email to provide to let's encrypt
+      - --certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json # Tell to store the certificate on a path under our volume
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - reverse-proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./letsencrypt:/letsencrypt # Create a letsencrypt dir within the folder where the docker-compose file is
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN:-localhost}`)
+      - traefik.http.routers.traefik.entrypoints=websecure
+      - traefik.http.routers.traefik.tls.certresolver=myresolver
+      - traefik.http.routers.traefik.service=api@internal
+      - traefik.http.routers.traefik.middlewares=auth
+      - traefik.http.middlewares.auth.basicauth.users=jett:$$2y$$05$$Qp5YbqseFbCUx9Ki6guKn.4mIAcRcEn1iLmMhxvGUlmPDEywNL3m6 # use basic auth, `$ htpasswd username password` (output replace $ -> $$)
+      - traefik.http.services.dashboard.loadbalancer.server.port=8080
+
+  whoami:
+    image: docker.io/traefik/whoami:latest
+    container_name: whoami
+    env_file:
+      - .env
+    networks:
+      - reverse-proxy
+    labels:
+      - traefik.enable=true # Explicitly tell Traefik to expose this container
+      - traefik.http.routers.whoami.rule=Host(`whoami.${DOMAIN:-localhost}`) # The domain the service will respond to
+      - traefik.http.routers.whoami.entrypoints=websecure # Allow request only from the predefined entry point named "websecure"
+      - traefik.http.routers.whoami.tls.certresolver=myresolver # Uses the Host rule to define which certificate to issue

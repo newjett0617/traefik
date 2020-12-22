@@ -5,11 +5,7 @@ docker network create reverse-proxy
 ```
 
 ```
-docker-compose --file traefik.yml up -d
-```
-
-```
-docker-compose --file whoami.yml up -d
+docker-compose up -d
 ```
 
 ```
