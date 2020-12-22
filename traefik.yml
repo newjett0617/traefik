@@ -13,7 +13,6 @@ services:
       - .env
     command:
       - --api.dashboard=true
-      - --api.insecure=true # Traefik will listen on port 8080 by default for API request
       - --providers.docker=true # Enabling docker provider
       - --providers.docker.exposedbydefault=false # Do not expose containers unless explicitly told so
       - --entrypoints.web.address=:80 # Traefik will listen to incoming request on the port 80 (HTTP)
@@ -28,4 +27,7 @@ services:
       - traefik.enable=true
       - traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN:-localhost}`)
       - traefik.http.routers.traefik.entrypoints=web
+      - traefik.http.routers.traefik.service=api@internal
+      - traefik.http.routers.traefik.middlewares=auth
+      - traefik.http.middlewares.auth.basicauth.users=jett:$$2y$$05$$Qp5YbqseFbCUx9Ki6guKn.4mIAcRcEn1iLmMhxvGUlmPDEywNL3m6 # use basic auth, `$ htpasswd username password` (output replace $ -> $$)
       - traefik.http.services.dashboard.loadbalancer.server.port=8080
